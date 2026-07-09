@@ -32,7 +32,6 @@ FFMPEG_OPTS = {
 PLAYLIST_LIMIT = 200
 PROGRESS_UPDATE_SECONDS = 1
 BOT_OWNER_ID = int(os.environ["BOT_OWNER_ID"]) if os.environ.get("BOT_OWNER_ID") else None
-FARM_DEFAULT_URL = os.environ.get("FARM_DEFAULT_URL")
 
 
 def format_duration(seconds: int) -> str:
@@ -473,14 +472,8 @@ class Music(commands.Cog):
         if player.current is None:
             await player.play_next()
 
-    @commands.command(name="farm", aliases=["join"])
-    async def farm(self, ctx: commands.Context, *, query: str = None):
-        if query is None:
-            query = FARM_DEFAULT_URL
-            if not query:
-                await ctx.send("❌ No pusiste un link y no hay `FARM_DEFAULT_URL` configurado en las variables de entorno.")
-                return
-
+    @commands.command(name="farm")
+    async def farm(self, ctx: commands.Context, *, query: str):
         if ctx.author.voice is None or ctx.author.voice.channel is None:
             await ctx.send("❌ Debes estar en un canal de voz para usar este comando.")
             return
@@ -531,32 +524,30 @@ class Music(commands.Cog):
     async def help_(self, ctx: commands.Context):
         embed = discord.Embed(title="🎵 Comandos del bot de música", color=discord.Color.blurple())
         embed.add_field(
-            name="!play <link o nombre>",
+            name=".play <link o nombre>",
             value=(
                 "Reproduce un link de YouTube, un link de playlist (hasta 200 canciones), "
                 "o busca por nombre/artista y reproduce el primer resultado.\n"
-                "Ej: `!play rauw alejandro todo de ti`\n"
-                "Ej: `!play https://youtube.com/playlist?list=...`"
+                "Ej: `.play rauw alejandro todo de ti`\n"
+                "Ej: `.play https://youtube.com/playlist?list=...`"
             ),
             inline=False,
         )
         embed.add_field(
-            name="!queue",
+            name=".queue",
             value="Muestra qué está sonando y las próximas canciones en cola.",
             inline=False,
         )
         embed.add_field(
-            name="!farm / #join [link o nombre]",
+            name=".farm <link o nombre>",
             value=(
                 "Reproduce esa canción en bucle infinito, para quedarte fijo en el canal de voz "
-                "acumulando horas. Si no pones nada, usa el link configurado en `FARM_DEFAULT_URL`. "
-                "`#join` es el prefijo compartido: úsalo para que este bot y los otros 3 se unan y "
-                "empiecen a farmear todos al mismo tiempo. Se detiene con el botón ⏹ Detener."
+                "acumulando horas. Se detiene con el botón ⏹ Detener."
             ),
             inline=False,
         )
         embed.add_field(
-            name="!lock",
+            name=".lock",
             value=(
                 "Solo el dueño del servidor o el dueño del bot. Fija/desfija el bot al canal de voz actual. "
                 "Con el modo activo, si alguien lo desconecta o lo mueve de canal, es expulsado del servidor "

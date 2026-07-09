@@ -32,6 +32,7 @@ FFMPEG_OPTS = {
 PLAYLIST_LIMIT = 200
 PROGRESS_UPDATE_SECONDS = 1
 BOT_OWNER_ID = int(os.environ["BOT_OWNER_ID"]) if os.environ.get("BOT_OWNER_ID") else None
+FARM_DEFAULT_URL = os.environ.get("FARM_DEFAULT_URL")
 
 
 def format_duration(seconds: int) -> str:
@@ -473,7 +474,13 @@ class Music(commands.Cog):
             await player.play_next()
 
     @commands.command(name="farm")
-    async def farm(self, ctx: commands.Context, *, query: str):
+    async def farm(self, ctx: commands.Context, *, query: str = None):
+        if query is None:
+            query = FARM_DEFAULT_URL
+            if not query:
+                await ctx.send("❌ No pusiste un link y no hay `FARM_DEFAULT_URL` configurado en las variables de entorno.")
+                return
+
         if ctx.author.voice is None or ctx.author.voice.channel is None:
             await ctx.send("❌ Debes estar en un canal de voz para usar este comando.")
             return
@@ -539,10 +546,11 @@ class Music(commands.Cog):
             inline=False,
         )
         embed.add_field(
-            name=".farm <link o nombre>",
+            name=".farm [link o nombre]",
             value=(
                 "Reproduce esa canción en bucle infinito, para quedarte fijo en el canal de voz "
-                "acumulando horas. Se detiene con el botón ⏹ Detener."
+                "acumulando horas. Si no pones nada, usa el link configurado en `FARM_DEFAULT_URL`. "
+                "Se detiene con el botón ⏹ Detener."
             ),
             inline=False,
         )

@@ -603,7 +603,7 @@ class Music(commands.Cog):
                 channel_desc += " (🌾 farm)"
         return f"{channel_desc}. Mis prefijos son: `{self._prefixes_display()}`."
 
-    @commands.command(name="status")
+    @commands.command(name="sts")
     async def status(self, ctx: commands.Context):
         mentioned_bots = [m for m in ctx.message.mentions if m.bot]
         if mentioned_bots and ctx.guild.me not in mentioned_bots:
@@ -749,7 +749,7 @@ class Music(commands.Cog):
             inline=False,
         )
         embed.add_field(
-            name="#status [@bot1 @bot2]",
+            name="#sts [@bot1 @bot2]",
             value=(
                 "Cada bot dice a qué servicio de Railway está conectado, en qué canal está y en qué modo "
                 "(lock/farm). Si mencionas bots específicos, solo esos responden."

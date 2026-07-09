@@ -152,6 +152,7 @@ class GuildPlayer:
         self.locked: bool = False
         self.locked_channel_id: int | None = None
         self.locked_recovering: bool = False
+        self.loop_current: bool = False
 
     def elapsed(self) -> int:
         if self.started_at is None:
@@ -184,7 +185,7 @@ class GuildPlayer:
             if not self.locked_recovering:
                 asyncio.run_coroutine_threadsafe(self._on_track_end(), self.bot.loop)
 
-        self.voice_client.play(source, after=after, bitrate=512, signal_type="music")
+        self.voice_client.play(source, after=after, bitrate=384, signal_type="music")
         embed, view = self.build_now_playing(track)
         try:
             self.now_playing_message = await self.voice_client.channel.send(embed=embed, view=view)
@@ -202,6 +203,12 @@ class GuildPlayer:
         if self.next_override is not None:
             track = self.next_override
             self.next_override = None
+            await self._start(track)
+            return
+
+        if self.loop_current and self.current is not None:
+            track = self.current
+            track.stream_url = None  # forzar re-resolución: el link de YouTube puede expirar tras horas
             await self._start(track)
             return
 
@@ -247,6 +254,7 @@ class GuildPlayer:
         self.history.clear()
         self.current = None
         self.next_override = None
+        self.loop_current = False
         if self.voice_client:
             self.voice_client.stop()
             await self.voice_client.disconnect()
@@ -464,6 +472,38 @@ class Music(commands.Cog):
         if player.current is None:
             await player.play_next()
 
+    @commands.command(name="farm")
+    async def farm(self, ctx: commands.Context, *, query: str):
+        if ctx.author.voice is None or ctx.author.voice.channel is None:
+            await ctx.send("❌ Debes estar en un canal de voz para usar este comando.")
+            return
+
+        player = self.get_player(ctx.guild.id)
+        if player.voice_client is None:
+            player.voice_client = await ctx.author.voice.channel.connect()
+        elif player.voice_client.channel != ctx.author.voice.channel:
+            await player.voice_client.move_to(ctx.author.voice.channel)
+
+        async with ctx.typing():
+            try:
+                track = await asyncio.to_thread(extract_track, query)
+            except yt_dlp.utils.DownloadError:
+                await ctx.send("❌ No pude encontrar o reproducir eso. Revisa el link o el nombre.")
+                return
+
+        track.requester = ctx.author
+        player.loop_current = True
+        player.next_override = track
+        if player.voice_client.is_playing() or player.voice_client.is_paused():
+            player.voice_client.stop()
+        else:
+            await player._start(track)
+
+        await ctx.send(
+            f"🌾 Modo farm activado con **{track.title}**. Se repetirá en bucle indefinidamente; "
+            "para detenerlo, presiona ⏹ Detener en el mensaje de reproducción."
+        )
+
     @commands.command(name="queue")
     async def queue_(self, ctx: commands.Context):
         player = self.get_player(ctx.guild.id)
@@ -496,6 +536,14 @@ class Music(commands.Cog):
         embed.add_field(
             name=".queue",
             value="Muestra qué está sonando y las próximas canciones en cola.",
+            inline=False,
+        )
+        embed.add_field(
+            name=".farm <link o nombre>",
+            value=(
+                "Reproduce esa canción en bucle infinito, para quedarte fijo en el canal de voz "
+                "acumulando horas. Se detiene con el botón ⏹ Detener."
+            ),
             inline=False,
         )
         embed.add_field(
